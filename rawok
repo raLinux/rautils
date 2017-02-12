@@ -1,0 +1,429 @@
+#!/bin/sh
+#
+# Source compiler and binary packages generator for Raptor.
+# Copyright 2017 Egor Mikhailov <nagakamira@mail.ru>
+#
+
+VERSION=1.0beta
+CATEGORIES="base-system
+x-window
+utilities
+network
+graphics
+multimedia
+office
+development
+system-tools
+security
+games
+misc
+meta
+non-free"
+COMMAND=$1
+PACKAGE=$2
+LIST=$2
+COMMAND=$1
+PACKAGE=$2
+LIST=$2
+
+if [ -f "/home/egor/wok.conf" ] ; then
+	. /home/egor/wok.conf
+else
+	echo "Unable to find the configuration file : /etc/rawok/wok.conf"
+	exit 0
+fi
+
+if test $(id -u) = 0 ; then
+	if [ ! -d "$WOK" ] ; then
+		echo -n "Preparing directory..."
+		mkdir -p $WOK
+	fi
+	if [ ! -d "$PACKAGES_REPOSITORY" ] ; then
+		echo -n "Preparing packages repository..."
+		mkdir -p $PACKAGES_REPOSITORY
+	fi
+fi
+
+RECEIPT="$WOK/$PACKAGE/receipt"
+LOG="$WOK/$PACKAGE/process.log"
+
+# === Library ==================================================================
+
+usage ()
+{
+	echo -e "\nSource compiler and binary packages generator for Raptor - Version: $VERSION\n
+\033[1mUsage: \033[0m `basename $0` [command] [package|list|category|dir] [--option]
+\033[1mCommands: \033[0m\n
+  usage      Print this short usage.
+  list       List all packages in the wok tree or by category.
+  info       Get informations about a package in the wok.
+  compile    Configure and build the package using the receipt rules.
+  genpkg     Generate a suitable package for Tazpkg with the rules.
+  cook       Compile and generate a package directly.
+  clean      Clean all generated files in the package tree.
+  gen-list   Generate a packages.list and md5sum for a repository.
+"
+}
+
+status()
+{
+  local CHECK=$?
+    echo -en "\033[64G"
+    if [ $CHECK = 0 ] ; then
+      echo -e "\e[1;32m[ DONE ]\e[0m"
+    else
+      echo -e "\e[1;31m[FAILED]\e[0m"
+    fi
+}
+
+root()
+{
+	if test $(id -u) != 0 ; then
+		echo -e "\nYou are not a root!"
+		exit 0
+	fi
+}
+
+check_for_package_on_cmdline()
+{
+	if [ -z "$PACKAGE" ]; then
+		echo -e "\nPlease specify a package name on the command line.\n"
+		exit 0
+	fi
+}
+
+check_for_receipt()
+{
+	if [ ! -f "$RECEIPT" ] ; then
+		echo "Unable to find the receipt : $RECEIPT"
+		exit 0
+	fi
+}
+
+check_for_list()
+{
+	if [ -z "$LIST" ] ; then
+		echo "You must specify the path to the list of packages to cook."
+		exit 0
+	fi
+	# Check if the list of packages exist.
+	if [ -f "$LIST" ] ; then
+		LIST=`cat $LIST`
+	else
+		echo "Unable to find $LIST packages list."
+		exit 0
+	fi
+}
+
+check_for_wanted()
+{
+	if [ ! "$WANTED" = "" ] ; then
+		echo -n "Checking for the wanted package..."
+		if [ ! -d "$WOK/$WANTED" ] ; then
+			echo "Wanted package is missing in the work directory."
+			exit 0
+		fi
+		status
+		# Set wanted src path.
+		src=$WOK/$WANTED/$WANTED-$VERSION
+		_pkg=$src/_pkg
+	fi
+}
+
+list()
+{
+		if [ "$2" = "category" ] ; then
+			echo -e "\033[1m\nPackages categories :\033[0m $CATEGORIES\n"
+			exit 0
+		fi
+		if [ -n "$2" ] ; then
+			ASKED_CATEGORY=$2
+			echo ""
+			echo -e "\033[1mPackages in category :\033[0m $ASKED_CATEGORY"
+			echo "----"
+			for pkg in `ls -1 $WOK`
+			do
+				. $WOK/$pkg/receipt
+				if [ "$CATEGORY" == "$ASKED_CATEGORY" ] ; then
+					echo "$PACKAGE ($VERSION)"
+					packages=$(($packages+1))
+				fi
+			done
+			echo "----"
+			echo "$packages packages in category $ASKED_CATEGORY."
+		else
+			echo ""
+			echo -e "\033[1mList of packages in the wok\033[0m"
+			echo "----"
+			for pkg in $WOK/*
+			do
+				. $pkg/receipt
+				echo "$PACKAGE ($VERSION)"
+				packages=$(($packages+1))
+			done
+			echo "----"
+			echo "$packages packages installed."
+		fi
+}
+
+info()
+{
+		. $WOK/$PACKAGE/receipt
+		echo ""
+		echo -e "\033[1mRawok package informations\033[0m\n
+Package	   : $PACKAGE
+Version	   : $VERSION
+Category   : $CATEGORY
+Short desc : $SHORT_DESC
+Maintainer : $MAINTAINER"
+		if [ ! "$DEPENDS" = "" ] ; then
+			echo -e "Depends    : $DEPENDS"
+		fi
+		if [ ! "$WANTED" = "" ] ; then
+			echo -e "Wanted src : $WANTED"
+		fi
+		if [ ! "$WEB_SITE" = "" ] ; then
+			echo -e "Web site   : $WEB_SITE\n"
+		else
+			echo ""
+		fi
+}
+
+log()
+{
+		if [ ! -f "$LOG" ] ; then
+			echo "No process log file found."
+			exit 0
+		else
+			echo ""
+			echo -e "\033[1mPackage process log\033[0m\n"
+			echo -e "Name: $PACKAGE\n"
+			cat $LOG
+			echo ""
+		fi
+}
+
+compile()
+{
+		echo "date `date +%Y%m%d\ \%H:%M:%S`" >> $LOG
+		echo "package $PACKAGE (compile)" >> $LOG
+		if [ ! "$SOURCE" = "" ] ; then
+			src=$WOK/$PACKAGE/$SOURCE-$VERSION
+		else
+			src=$WOK/$PACKAGE/$PACKAGE-$VERSION
+		fi
+		check_for_wanted
+		echo "Starting to cook $PACKAGE..."
+		# Check for src tarball and wget if needed.
+		if [ ! "$TARBALL" = "" ] ; then
+			echo "Checking for source tarball... "
+			if [ ! -f "$SOURCES_REPOSITORY/$TARBALL" ] ; then
+				cd $SOURCES_REPOSITORY
+				wget $WGET_URL
+			else
+				echo -n "Source tarball exit... "
+				status
+			fi
+			# Untaring source if necessary. We dont need to extract source if
+			# the package is build with a wanted source package.
+			if [ "$WANTED" = "" ] ; then
+				if [ ! -d $src ] ; then
+					# Log process.
+					echo "untaring $TARBALL" >> $LOG
+					echo -n "Untaring $TARBALL... "
+					if [ "`basename $TARBALL | grep tar.bz2`" ] ; then
+						tar xjf $SOURCES_REPOSITORY/$TARBALL -C $WOK/$PACKAGE
+					else
+						tar xzf $SOURCES_REPOSITORY/$TARBALL -C $WOK/$PACKAGE
+					fi
+					status
+				else
+					echo -n "Source direcory exit... " && status
+				fi
+			fi
+		fi
+		cd $WOK/$PACKAGE
+		# Log and execute compile_rules function if it exist, to configure and
+		# make the package if it exist.
+		if [ `cat $RECEIPT | grep compile_rules` ] ; then
+			echo "executing compile_rules" >> $LOG
+			compile_rules
+
+		else
+			echo "no compile_rules" >> $LOG
+			echo "No compile rules for $PACKAGE..."
+		fi
+}
+
+genpkg()
+{
+		. $RECEIPT
+		check_for_wanted
+		cd $WOK/$PACKAGE
+		# Remove old Tazwok package files.
+		if [ -d "taz" ] ; then
+			rm -rf taz
+			rm -f $PACKAGES_REPOSITORY/$PACKAGE-$VERSION.pkg
+		fi
+		# Creat the package tree and set usful variables.
+		mkdir -p taz/$PACKAGE-$VERSION/fs
+		fs=taz/$PACKAGE-$VERSION/fs
+		# Set $src for standards package and $_pkg variables.
+		if [ "$WANTED" = "" ] ; then
+			src=$WOK/$PACKAGE/$PACKAGE-$VERSION
+			_pkg=$src/_pkg
+		fi
+		if [ ! "$SOURCE" = "" ] ; then
+			src=$WOK/$PACKAGE/$SOURCE-$VERSION
+			_pkg=$src/_pkg
+		fi
+		cd $WOK/$PACKAGE
+		# Execute genpkg_rules to build the package.
+		echo "Bulding $PACKAGE with the receipt..."
+		echo "----"
+		if [ `cat $RECEIPT | grep genpkg_rules` ] ; then
+			# Log process.
+			echo "executing genpkg_rules" >> $LOG
+			genpkg_rules
+		else
+			echo "No package rules to gen $PACKAGE..."
+		fi
+		# Copy the receipt and description (if exist) in
+		# the binary package tree.
+		cd $WOK/$PACKAGE
+		echo -n "Copying the receipt..."
+		cp receipt taz/$PACKAGE-$VERSION
+		status
+		if [ -f "description.txt" ] ; then
+			echo -n "Copying the description file..."
+			cp description.txt taz/$PACKAGE-$VERSION
+			status
+		fi
+		# Creat the files.list by redirecting find outpout.
+		echo -n "Creating the list of files..."
+		cd taz/$PACKAGE-$VERSION/fs
+		find . -type f -print > ../files.list
+		find . -type l -print >> ../files.list
+		cd .. && sed -i s/'^.'/''/ files.list
+		status
+		# Build cpio archives. Find, cpio and gzip the fs, finish by
+		# removing the fs tree.
+		echo -n "Compressing the fs... "
+		find fs -print | cpio -o -H newc > fs.cpio
+		gzip fs.cpio && rm -rf fs
+		echo -n "Creating full cpio archive... "
+		find . -print | cpio -o -H newc > $PACKAGES_REPOSITORY/$PACKAGE-$VERSION.pkg
+		# Restore package tree in case we want to browse it.
+		echo -n "Restoring original package tree... "
+		gzip -d fs.cpio.gz && cpio -id < fs.cpio
+		rm fs.cpio && cd ..
+		echo "$PACKAGE-$VERSION.pkg (done)" >> $LOG
+		echo "----"
+		echo "Package $PACKAGE ($VERSION) generated."
+		echo "Size : `du -sh $PACKAGES_REPOSITORY/$PACKAGE-$VERSION.pkg`"
+}
+
+clean()
+{
+		. $RECEIPT
+		cd $WOK/$PACKAGE
+		echo "Cleaning $PACKAGE..."
+		if [ -d "taz" ] ; then
+			echo -n "* Removing taz files..."
+			rm -rf taz && status
+		fi
+		if [ -d "$PACKAGE-$VERSION" ] ; then
+			echo -n "* Removing source files..."
+			rm -rf $PACKAGE-$VERSION && status
+		fi
+		if [ -d "$SOURCE-$VERSION" ] ; then
+			echo -n "* Removing source files..."
+			rm -rf $SOURCE-$VERSION && status
+		fi
+		if [ -d "$PACKAGE-build" ] ; then
+			echo -n "* Removing build tree..."
+			rm -rf $PACKAGE-build && status
+		fi
+		if [ -f "process.log" ] ; then
+			echo -n "* Removing process log file..."
+			rm process.log && status
+		fi
+		for pkg in `ls -1 $WOK`
+		do
+			rawok clean $pkg
+		done
+		echo "----"
+		echo "`ls -1 $WOK | wc -l` packages cleaned."
+}
+
+gen_list()
+{
+		if [ -z "$2" ] ; then
+			PACKAGES_REPOSITORY=$PACKAGES_REPOSITORY
+		else
+			if [ -d "$2" ] ; then
+				PACKAGES_REPOSITORY=$2
+			else
+				echo "Unable to find directory : $2"
+				exit 0
+			fi
+		fi
+		cd $PACKAGES_REPOSITORY
+		echo "----"
+		echo "Repository path: $PACKAGES_REPOSITORY"
+		echo -n "Creating the packages list... "
+		ls -1 > /tmp/packages.list
+		sed -i s/'.pkg'/''/ /tmp/packages.list
+		status
+		echo -n "Building the md5sum for all packages... "
+		md5sum * > packages.md5
+		status
+		mv /tmp/packages.list $PACKAGES_REPOSITORY
+		echo "----"
+		pkgs=`cat $PACKAGES_REPOSITORY/packages.list | wc -l`
+		echo "$pkgs packages in the repository."
+}
+
+# === Main =====================================================================
+
+case "$COMMAND" in
+	list)
+		list
+		;;
+	info)
+		check_for_package_on_cmdline
+		check_for_receipt
+		info
+		;;
+	compile)
+		check_for_package_on_cmdline
+		check_for_receipt
+		compile
+		;;
+	genpkg)
+		root
+		check_for_package_on_cmdline
+		check_for_receipt
+		genpkg
+		;;
+	cook)
+		root
+		check_for_package_on_cmdline
+		check_for_receipt
+		`basename $0` compile $PACKAGE
+		`basename $0` genpkg $PACKAGE
+		;;
+	clean)
+		check_for_package_on_cmdline
+		check_for_receipt
+		clean
+		;;
+	gen-list)
+		gen_list
+		;;
+	usage|*)
+		usage
+		;;
+esac
+
+exit 0
