@@ -26,8 +26,8 @@ COMMAND=$1
 PACKAGE=$2
 LIST=$2
 
-if [ -f "/home/egor/wok.conf" ] ; then
-	. /home/egor/wok.conf
+if [ -f "/etc/rawok/wok.conf" ] ; then
+	. /etc/rawok/wok.conf
 else
 	echo "Unable to find the configuration file : /etc/rawok/wok.conf"
 	exit 0
