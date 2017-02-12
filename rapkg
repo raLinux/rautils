@@ -614,24 +614,24 @@ case "$COMMAND" in
 		add
 		check_for_deps
 		if [ ! "$MISSING_PACKAGE" = "" ]; then
-			install_deps
+		install_deps
 		fi
 		;;
 	remove)
-			root
-			check_for_package_on_cmdline
-			remove
+		root
+		check_for_package_on_cmdline
+		remove
 		;;
 	update)
-			root
-			update
+		root
+		update
 		;;
 	upgrade)
-			root
-			upgrade
+		root
+		upgrade
 		;;
 	list)
-			list
+		list
 		;;
 	block)
 		root
