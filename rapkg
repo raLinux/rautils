@@ -507,6 +507,75 @@ list ()
 		fi
 }
 
+block ()
+{
+		echo ""
+		if grep -q "^$PACKAGE" $BLOCKED; then
+			echo "$PACKAGE is already in the blocked packages list."
+			echo ""
+			exit 0
+		else
+			echo -n "Add $PACKAGE to : $BLOCKED..."
+			echo $PACKAGE >> $BLOCKED
+			status
+			# Log this activity
+			. $INSTALLED/$PACKAGE/receipt
+			log Blocked
+		fi
+		echo ""
+}
+
+unblock ()
+{
+		echo ""
+		if grep -q "^$PACKAGE" $BLOCKED; then
+			echo -n "Removing $PACKAGE from : $BLOCKED..."
+			sed -i s/$PACKAGE/''/ $BLOCKED
+			sed -i '/^$/d' $BLOCKED
+			status
+			# Log this activity
+			. $INSTALLED/$PACKAGE/receipt
+			log Unblocked
+		else
+			echo "$PACKAGE is not in the blocked packages list."
+			echo ""
+			exit 0
+		fi
+		echo ""
+}
+
+get-list () 
+{
+		if [ -z "$2" ]; then
+			echo -e "Please change directory (cd) to the packages repository, and specify the list of packages to install. Example : rapkg get-list packages.list\n"
+			exit 0
+		fi
+		if [ ! -f "$2" ]; then
+			echo "Unable to find : $2"
+			exit 0
+		else
+			LIST=`cat $2`
+		fi
+		
+		export INSTALL_LIST="$2"
+
+		if [ "$1" = "get-list" ]; then
+			COMMAND=get-install
+		else
+			COMMAND=install
+		fi
+		touch $2-processed
+		for pkg in $LIST
+		do
+			grep -qs ^$pkg$ $2-processed && continue
+			rapkg $COMMAND $pkg --list=$2 "$3" "$4" "$5"
+		done
+		rm -f $2-processed
+		;;
+	usage|*)
+			usage
+}
+
 # === Main =====================================================================
 
 case "$COMMAND" in
@@ -565,78 +634,18 @@ case "$COMMAND" in
 			list
 		;;
 	block)
-		# Add a pkg name to the list of blocked packages.
-		#
 		root
 		check_for_package_on_cmdline
-		echo ""
-		if grep -q "^$PACKAGE" $BLOCKED; then
-			echo "$PACKAGE is already in the blocked packages list."
-			echo ""
-			exit 0
-		else
-			echo -n "Add $PACKAGE to : $BLOCKED..."
-			echo $PACKAGE >> $BLOCKED
-			status
-			# Log this activity
-			. $INSTALLED/$PACKAGE/receipt
-			log Blocked
-		fi
-		echo ""
+		block
 		;;
 	unblock)
-		# Remove a pkg name from the list of blocked packages.
-		#
 		root
 		check_for_package_on_cmdline
-		echo ""
-		if grep -q "^$PACKAGE" $BLOCKED; then
-			echo -n "Removing $PACKAGE from : $BLOCKED..."
-			sed -i s/$PACKAGE/''/ $BLOCKED
-			sed -i '/^$/d' $BLOCKED
-			status
-			# Log this activity
-			. $INSTALLED/$PACKAGE/receipt
-			log Unblocked
-		else
-			echo "$PACKAGE is not in the blocked packages list."
-			echo ""
-			exit 0
-		fi
-		echo ""
+		unblock
 		;;
-	get-list) 		# Install a set of packages from a list.
-		#
+	get-list)
 		root
-		if [ -z "$2" ]; then
-			echo -e "Please change directory (cd) to the packages repository, and specify the
-list of packages to install. Example : rapkg get-list packages.list\n"
-			exit 0
-		fi
-		# Check if the packages list exist.
-		if [ ! -f "$2" ]; then
-			echo "Unable to find : $2"
-			exit 0
-		else
-			LIST=`cat $2`
-		fi
-		
-		# Remember processed list
-		export INSTALL_LIST="$2"
-
-		# Set $COMMAND and install all packages.
-		if [ "$1" = "get-install-list" ]; then
-			COMMAND=get-install
-		else
-			COMMAND=install
-		fi
-		touch $2-processed
-		for pkg in $LIST
-		do
-			grep -qs ^$pkg$ $2-processed && continue
-			rapkg $COMMAND $pkg --list=$2 "$3" "$4" "$5"
-		done
-		rm -f $2-processed
+		get-list
 		;;
 	usage|*)
 			usage
