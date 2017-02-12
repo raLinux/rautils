@@ -571,9 +571,6 @@ get-list ()
 			rapkg $COMMAND $pkg --list=$2 "$3" "$4" "$5"
 		done
 		rm -f $2-processed
-		;;
-	usage|*)
-			usage
 }
 
 # === Main =====================================================================
