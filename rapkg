@@ -259,7 +259,7 @@ install_deps()
 	fi
 }
 
-remove ()
+remove()
 {
 		if [ ! -d "$INSTALLED/$PACKAGE" ]; then
 			echo -e "\n$PACKAGE is not installed.\n"
@@ -291,7 +291,7 @@ remove ()
 		echo ""
 }
 
-upgrade ()
+upgrade()
 {
 		cd $LOCALSTATE
 		touch blocked-packages.list
@@ -462,7 +462,7 @@ a list of differencies will be displayed to show new and upgradable packages.\n"
 		fi
 }
 
-list ()
+list()
 {
 		# List all installed packages or a specific category.
 		#
@@ -507,7 +507,7 @@ list ()
 		fi
 }
 
-block ()
+block()
 {
 		echo ""
 		if grep -q "^$PACKAGE" $BLOCKED; then
@@ -525,7 +525,7 @@ block ()
 		echo ""
 }
 
-unblock ()
+unblock()
 {
 		echo ""
 		if grep -q "^$PACKAGE" $BLOCKED; then
@@ -544,10 +544,11 @@ unblock ()
 		echo ""
 }
 
-get-list () 
+get_lists() 
 {
 		if [ -z "$2" ]; then
-			echo -e "Please change directory (cd) to the packages repository, and specify the list of packages to install. Example : rapkg get-list packages.list\n"
+			echo -e "Please change directory (cd) to the packages repository, and specify the list of packages to install. Example : 
+rapkg get-list packages.list\n"
 			exit 0
 		fi
 		if [ ! -f "$2" ]; then
@@ -642,7 +643,7 @@ case "$COMMAND" in
 		;;
 	get-list)
 		root
-		get-list
+		get_lists
 		;;
 	usage|*)
 			usage
