@@ -150,9 +150,7 @@ add()
 	mkdir -p $TMP_DIR
 	echo ""
 	echo "================================================================================"
-	echo ""
 	echo -e "\033[1mInstallation of :\033[0m $PACKAGE"
-	echo ""
 	echo "================================================================================"
 	echo ""
 	echo -n "Copying $PACKAGE... "
@@ -183,9 +181,7 @@ add()
 	cd $TOP_DIR
 	echo ""
 	echo "================================================================================"
-	echo ""
 	echo "$PACKAGE is installed."
-	echo ""
 	echo "================================================================================"
 	echo ""
 }
@@ -201,9 +197,7 @@ check_for_deps()
 	done
 	if [ ! "$MISSING_PACKAGE" = "" ]; then
 		echo "================================================================================"
-		echo ""
 		echo -e "\033[1mTracking dependencies for :\033[0m $PACKAGE"
-		echo ""
 		echo "================================================================================"
 		for i in $DEPENDS
 		do
@@ -213,9 +207,7 @@ check_for_deps()
 			fi
 		done
 		echo "================================================================================"
-		echo ""
 		echo "$deps missing package(s) to install."
-		echo ""
 		echo "================================================================================"
 	fi
 }
@@ -282,9 +274,7 @@ remove ()
 			echo ""
 			echo -e "\033[1mRemoving :\033[0m $PACKAGE"
 			echo "================================================================================"
-			echo ""
 			echo -n "Removing all files installed..."
-			echo ""
 			echo "================================================================================"
 			for file in `cat $INSTALLED/$PACKAGE/files.list`
 			do
@@ -307,9 +297,7 @@ upgrade ()
 		touch blocked-packages.list
 		rm -f upgradeable-packages.list
 		echo "================================================================================"
-		echo ""
 		echo -e "\033[1mAvailable upgrades\033[0m"
-		echo ""
 		echo "================================================================================"
 		FIRST_CLASS_PACKAGE=" glibc-base slitaz-base-files slitaz-boot-scripts "
 		for pkg in $INSTALLED/*
@@ -392,16 +380,12 @@ upgrade ()
 		if [ ! "$up" = "" ]; then
 			echo -e "\\033[0G                                         "
 			echo "================================================================================"
-			echo ""
 			echo "$packages installed and listed packages to consider, $up to upgrade, $blocked blocked."
-			echo ""
 			echo "================================================================================"
 		else
 			echo -e "\\033[0GSystem is up-to-date.                    "
 			echo "================================================================================"
-			echo ""
 			echo "$packages installed and listed packages to consider, 0 to upgrade, $blocked blocked."
-			echo ""
 			echo "================================================================================"
 			exit 0
 		fi
@@ -489,7 +473,7 @@ list ()
 		# Check for an asked category.
 		if [ -n "$2" ]; then
 			ASKED_CATEGORY=$2
-			echo ""
+			echo "================================================================================"
 			echo -e "\033[1mInstalled packages of category :\033[0m $ASKED_CATEGORY"
 			echo "================================================================================"
 			for pkg in $INSTALLED/*
@@ -503,10 +487,10 @@ list ()
 			done
 			echo "================================================================================"
 			echo -e "$packages packages installed of category $ASKED_CATEGORY."
-			echo ""
+			echo "================================================================================"
 		else
 			# By default list all packages and version.
-			echo ""
+			echo "================================================================================"
 			echo -e "\033[1mList of all installed packages\033[0m"
 			echo "================================================================================"
 			for pkg in $INSTALLED/*
