@@ -559,7 +559,6 @@ case "$COMMAND" in
 		;;
 	upgrade)
 			root
-			check_for_package_on_cmdline
 			upgrade
 		;;
 	list)
