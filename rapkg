@@ -62,17 +62,15 @@ usage () {
 \033[1mUsage: \033[0m `basename $0` [command] [package] [dir]
 \033[1mCommands: \033[0m
 
-	usage           Print this usage.
-	list            List all installed packages.
-	install         Download and install a package from the mirror.
-	remove          Remove specified package.
-	update        	Recharge your packges.list from the mirror.
+	usage           	Print this usage.
+	list            	List all installed packages.
+	install         	Download and install a package from the mirror.
+	remove          	Remove specified package.
+	update        		Recharge your packges.list from the mirror.
 	upgrade			Upgrade all installed and listed packages on the mirror.
 	add 			Install a local (*.pkg) package.
 	get-list 		Download and install a list of packages from the mirror.
-	block|unblock   Block an installed package version or unblock it for upgrade.
-	build			Not Avaliable in this version
-	emerge			Not Avaliable in this version
+	block|unblock   	Block an installed package version or unblock it for upgrade.
    "  
 }
 
