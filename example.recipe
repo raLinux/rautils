@@ -1,1 +1,20 @@
+# SliTaz package receipt 
 
+PACKAGE=""
+VERSION=""
+CATEGORY=""
+SHORT_DESC=""
+MAINTAINER=""
+DEPENDS=""
+TARBALL="$PACKAGE-$VERSION"
+WEB_SITE=""
+WGET_URL="$TARBALL"
+
+compile_rules()
+{
+	cd $src
+}
+
+genpkg_rules()
+{
+}
